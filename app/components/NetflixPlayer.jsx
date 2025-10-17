@@ -28,12 +28,19 @@ export default function NetflixPlayer({ src }) {
   const [skipDirection, setSkipDirection] = useState(null); // 👈 for 10s overlay
   const hideTimeout = useRef(null);
 
-  // --- Load HLS stream ---
+  // --- Load HLS stream and Auto-play/Set initial state ---
   useEffect(() => {
     const video = videoRef.current;
     let hls;
 
-    if (!src || typeof src !== "string" || !src.trim()) return;
+    if (!src || typeof src !== "string" || !src.trim() || !video) return;
+
+    // ✅ FIX 1: Initial progress and time ko 0 par set karo.
+    // Progress bar ki flickering iss wajah se hoti hai, ki jab video load
+    // ho rahi hoti hai toh component pehle render ho jata hai aur progress
+    // ko 0 par lock karna zaroori hai.
+    setProgress(0);
+    setCurrentTime(0);
 
     if (Hls.isSupported()) {
       hls = new Hls();
@@ -44,19 +51,40 @@ export default function NetflixPlayer({ src }) {
     }
 
     const handleEnded = () => setIsPlaying(false);
-    const handleLoaded = () => setDuration(video.duration);
 
-    video.addEventListener("ended", handleEnded);
+    const handleLoaded = () => {
+      // Set duration
+      setDuration(video.duration);
+      // Ensure the video starts at the very beginning
+      video.currentTime = 0;
+    };
+
+    const attemptAutoPlay = async () => {
+      // Autoplay logic (No change)
+      try {
+        await video.play();
+        setIsPlaying(true);
+      } catch (error) {
+        // If autoplay fails (e.g., due to browser policy)
+        console.log("Autoplay failed:", error);
+        setIsPlaying(false);
+      }
+    };
+    
+    // Event listeners
     video.addEventListener("loadedmetadata", handleLoaded);
+    video.addEventListener("canplay", attemptAutoPlay, { once: true });
+    video.addEventListener("ended", handleEnded);
 
     return () => {
       if (hls) hls.destroy();
       video.removeEventListener("ended", handleEnded);
       video.removeEventListener("loadedmetadata", handleLoaded);
+      video.removeEventListener("canplay", attemptAutoPlay);
     };
   }, [src]);
-
-  // --- Auto-hide controls ---
+  
+  // --- Auto-hide controls (No change) ---
   const resetHideTimer = () => {
     setShowControls(true);
     clearTimeout(hideTimeout.current);
@@ -82,9 +110,13 @@ export default function NetflixPlayer({ src }) {
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
-    if (isPlaying) video.pause();
-    else video.play();
-    setIsPlaying(!isPlaying);
+    if (isPlaying) {
+      video.pause();
+      setIsPlaying(false);
+    } else {
+      video.play();
+      setIsPlaying(true);
+    }
   };
 
   const showSkipOverlay = (dir) => {
@@ -114,15 +146,21 @@ export default function NetflixPlayer({ src }) {
 
   const handleTimeUpdate = () => {
     const video = videoRef.current;
+    if (!video || isNaN(video.duration)) return; // ✅ FIX 2: Added duration check
+
     setCurrentTime(video.currentTime);
     setProgress((video.currentTime / video.duration) * 100);
+    // Sync isPlaying state
+    if (video.paused && isPlaying) setIsPlaying(false);
+    if (!video.paused && !isPlaying) setIsPlaying(true);
   };
 
   const handleSeek = (e) => {
     const video = videoRef.current;
-    const newTime = (e.target.value / 100) * video.duration;
+    const newProgress = parseFloat(e.target.value);
+    const newTime = (newProgress / 100) * video.duration;
     video.currentTime = newTime;
-    setProgress(e.target.value);
+    setProgress(newProgress);
   };
 
   const toggleFullscreen = () => {
@@ -137,12 +175,16 @@ export default function NetflixPlayer({ src }) {
   };
 
   const formatTime = (time) => {
-    if (isNaN(time)) return "00:00";
-    const mins = Math.floor(time / 60);
+    if (isNaN(time) || time < 0) return "00:00";
+    const hours = Math.floor(time / 3600);
+    const mins = Math.floor((time % 3600) / 60);
     const secs = Math.floor(time % 60);
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
+
+    if (hours > 0) {
+      return `${hours} hr ${mins} min`;
+    } else {
+      return `${mins} min ${secs < 10 ? "0" + secs : secs} sec`;
+    }
   };
 
   return (
@@ -162,7 +204,7 @@ export default function NetflixPlayer({ src }) {
       {skipDirection === "backward" && (
         <div className="absolute left-[20%] top-1/2 -translate-y-1/2 flex flex-col items-center text-white animate-skip">
           <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
-            <Rewind size={40} />
+            <Rewind size={40} className="cursor-pointer" />
           </div>
           <span className="text-lg font-semibold mt-1">10s</span>
         </div>
@@ -170,19 +212,19 @@ export default function NetflixPlayer({ src }) {
       {skipDirection === "forward" && (
         <div className="absolute right-[20%] top-1/2 -translate-y-1/2 flex flex-col items-center text-white animate-skip">
           <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
-            <FastForward size={40} />
+            <FastForward size={40} className="cursor-pointer" />
           </div>
           <span className="text-lg font-semibold mt-1">10s</span>
         </div>
       )}
 
       {/* --- Center Play Overlay --- */}
-      {!isPlaying && showControls && (
+      {videoRef.current?.paused && showControls && (
         <button
           onClick={togglePlay}
           className="absolute inset-0 flex justify-center items-center bg-black/30 hover:bg-black/50 transition"
         >
-          <Play size={60} className="text-white opacity-80" />
+          <Play size={60} className="text-white opacity-80 cursor-pointer" />
         </button>
       )}
 
@@ -216,13 +258,13 @@ export default function NetflixPlayer({ src }) {
               onClick={() => skipTime(-10)}
               className="hover:text-red-500 transition"
             >
-              <Rewind size={22} />
+              <Rewind size={22} className="cursor-pointer" />
             </button>
             <button
               onClick={() => skipTime(10)}
               className="hover:text-red-500 transition"
             >
-              <FastForward size={22} />
+              <FastForward size={22} className="cursor-pointer" />
             </button>
 
             {/* Volume */}
@@ -231,7 +273,11 @@ export default function NetflixPlayer({ src }) {
                 onClick={handleMute}
                 className="hover:text-red-500 transition"
               >
-                {isMuted ? <VolumeX size={22} /> : <Volume2 size={22} />}
+                {isMuted ? (
+                  <VolumeX size={22} className="cursor-pointer" />
+                ) : (
+                  <Volume2 size={22} className="cursor-pointer" />
+                )}
               </button>
 
               {/* Hover volume slider */}
@@ -257,12 +303,16 @@ export default function NetflixPlayer({ src }) {
             onClick={toggleFullscreen}
             className="hover:text-red-500 transition"
           >
-            {isFullscreen ? <Minimize size={22} /> : <Maximize size={22} />}
+            {isFullscreen ? (
+              <Minimize size={22} className="cursor-pointer" />
+            ) : (
+              <Maximize size={22} className="cursor-pointer" />
+            )}
           </button>
         </div>
       </div>
 
-      {/* --- CSS animation for skip overlay --- */}
+      {/* --- CSS animation for skip overlay (No change) --- */}
       <style jsx>{`
         @keyframes skipAnim {
           0% {

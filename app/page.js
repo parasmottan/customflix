@@ -19,6 +19,7 @@ const [url, seturl] = useState(1)
             src="/kalapaniep1.png"
             alt="Picture of the author"
             fill
+            loading="lazy"
             className="object-cover rounded-lg"
           />
 
@@ -26,9 +27,10 @@ const [url, seturl] = useState(1)
         </div>
           <div className="w-48 h-[80%] min-w-[15rem] relative flex-shrink-0 cursor-pointer" onClick={() => seturl(2)}> 
           <Image
-            src="/kalapaniep1.png"
+            src="/kalapaniep2.png"
             alt="Picture of the author"
             fill
+            loading="lazy"
             className="object-cover rounded-lg"
           />
 
@@ -39,6 +41,7 @@ const [url, seturl] = useState(1)
             src="/kalapaniep3.png"
             alt="Picture of the author"
             fill
+            loading="lazy"
             className="object-cover rounded-lg"
           />
 
@@ -49,6 +52,7 @@ const [url, seturl] = useState(1)
             src="/kalapaniep4.png"
             alt="Picture of the author"
             fill
+            loading="lazy"
             className="object-cover rounded-lg"
           />
 
@@ -60,6 +64,7 @@ const [url, seturl] = useState(1)
             src="/kalapaniep5.png"
             alt="Picture of the author"
             fill
+            loading="lazy"
             className="object-cover rounded-lg"
           />
 
@@ -71,6 +76,7 @@ const [url, seturl] = useState(1)
             src="/kalapaniep6.png"
             alt="Picture of the author"
             fill
+            loading="lazy"
             className="object-cover rounded-lg"
           />
 
@@ -82,6 +88,7 @@ const [url, seturl] = useState(1)
             src="/kalapaniep7.png"
             alt="Picture of the author"
             fill
+            loading="lazy"
             className="object-cover rounded-lg"
           />
 
