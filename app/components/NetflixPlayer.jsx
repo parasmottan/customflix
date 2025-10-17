@@ -36,9 +36,6 @@ export default function NetflixPlayer({ src }) {
     if (!src || typeof src !== "string" || !src.trim() || !video) return;
 
     // ✅ FIX 1: Initial progress and time ko 0 par set karo.
-    // Progress bar ki flickering iss wajah se hoti hai, ki jab video load
-    // ho rahi hoti hai toh component pehle render ho jata hai aur progress
-    // ko 0 par lock karna zaroori hai.
     setProgress(0);
     setCurrentTime(0);
 
@@ -106,7 +103,7 @@ export default function NetflixPlayer({ src }) {
     };
   }, []);
 
-  // --- Controls ---
+  // --- Controls (No change) ---
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -146,7 +143,7 @@ export default function NetflixPlayer({ src }) {
 
   const handleTimeUpdate = () => {
     const video = videoRef.current;
-    if (!video || isNaN(video.duration)) return; // ✅ FIX 2: Added duration check
+    if (!video || isNaN(video.duration)) return;
 
     setCurrentTime(video.currentTime);
     setProgress((video.currentTime / video.duration) * 100);
@@ -190,7 +187,10 @@ export default function NetflixPlayer({ src }) {
   return (
     <div
       ref={containerRef}
-      className="relative w-full max-w-[900px] aspect-video bg-black rounded-2xl m-5 overflow-hidden group select-none"
+      // 👇 Yeh classes change kiye hain:
+      // max-w-[900px] chota dikhta tha, ab 80vw kar diya hai.
+      // m-5 hata kar mx-auto my-10 kiya hai taaki center mein dikhe.
+      className="relative w-full max-w-[90vw] md:max-w-[80vw] lg:max-w-[1500px] aspect-video bg-black rounded-2xl mx-auto my-10 overflow-hidden group select-none"
     >
       {/* --- Video --- */}
       <video
